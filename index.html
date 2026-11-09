@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Lume · 我的光</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
+<meta name="theme-color" content="#E6DCF4">
+<meta name="description" content="Lume · 我的光 — 溫柔記錄每一天的個人工作台">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lume">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="icon" href="assets/img/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Cormorant+Garamond:ital,wght@1,500&family=Gowun+Batang&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/theme.css">
+<script>
+  /* 先決定淺色 / 月光，避免畫面先白再變暗 */
+  (function () {
+    var m = 'auto';
+    try { m = localStorage.getItem('lume_theme_v2') || 'auto'; } catch (e) { }
+    var h = new Date().getHours();
+    var dark = m === 'dark' || (m === 'auto' && (h >= 19 || h < 6));
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  })();
+</script>
+</head>
+<body>
+<div id="bgart" aria-hidden="true"></div>
+
+<div class="app">
+  <!-- 側欄（手機是抽屜，電腦固定在左邊） -->
+  <aside class="sidenav" id="sidenav" aria-label="選單"></aside>
+  <div class="drawer-mask" id="drawerMask"></div>
+
+  <div class="shell">
+    <header class="topbar">
+      <button class="icon-btn plain" id="menuBtn" aria-label="打開選單"></button>
+      <div class="brand-lg" id="brandTop">Lume</div>
+      <div class="spacer"></div>
+      <button class="icon-btn plain" id="searchBtn" aria-label="搜尋"></button>
+      <button class="icon-btn plain" id="themeBtn" aria-label="切換淺色 / 月光"></button>
+    </header>
+
+    <main class="main" id="main"></main>
+  </div>
+</div>
+
+<button class="fab" id="fab" aria-label="快速記一筆"></button>
+
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/store.js"></script>
+<script src="assets/js/core/idb.js"></script>
+<script src="assets/js/core/ui.js"></script>
+<script src="assets/js/core/input.js"></script>
+<script src="assets/js/core/sync.js"></script>
+<script src="assets/js/core/data.js"></script>
+<script src="assets/js/core/quotes.js"></script>
+<script src="assets/js/core/extras.js"></script>
+<script src="assets/js/modules/home.js"></script>
+<script src="assets/js/modules/today.js"></script>
+<script src="assets/js/modules/todo.js"></script>
+<script src="assets/js/modules/study.js"></script>
+<script src="assets/js/modules/water.js"></script>
+<script src="assets/js/modules/reading.js"></script>
+<script src="assets/js/modules/diary.js"></script>
+<script src="assets/js/modules/murmurs.js"></script>
+<script src="assets/js/modules/body.js"></script>
+<script src="assets/js/modules/tarot.js"></script>
+<script src="assets/js/modules/firsts.js"></script>
+<script src="assets/js/modules/notes.js"></script>
+<script src="assets/js/modules/outfit.js"></script>
+<script src="assets/js/modules/period.js"></script>
+<script src="assets/js/modules/wishes.js"></script>
+<script src="assets/js/modules/review.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
