@@ -2,6 +2,9 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
+<!-- 安全設定：只允許執行這個網站自己的程式檔，擋掉任何被塞進資料裡的程式碼 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Lume · 我的光</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
@@ -19,16 +22,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Cormorant+Garamond:ital,wght@1,500&family=Gowun+Batang&display=swap">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="stylesheet" href="assets/css/theme.css">
-<script>
-  /* 先決定淺色 / 月光，避免畫面先白再變暗 */
-  (function () {
-    var m = 'auto';
-    try { m = localStorage.getItem('lume_theme_v2') || 'auto'; } catch (e) { }
-    var h = new Date().getHours();
-    var dark = m === 'dark' || (m === 'auto' && (h >= 19 || h < 6));
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  })();
-</script>
+<script src="assets/js/core/theme-boot.js"></script>
 </head>
 <body>
 <div id="bgart" aria-hidden="true"></div>

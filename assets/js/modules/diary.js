@@ -388,7 +388,7 @@ window.Lume = window.Lume || {}; window.Lume.modules = window.Lume.modules || {}
 
       const th = root.querySelector('#thumbs');
       const draw = () => th.innerHTML = imgs.map((s, i) =>
-        '<div class="thumb"><img src="' + s + '"><span class="x" data-rm="' + i + '">×</span></div>').join('');
+        '<div class="thumb">' + L.imgTag(s) + '<span class="x" data-rm="' + i + '">×</span></div>').join('');
       draw();
       th.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { imgs.splice(+b.dataset.rm, 1); draw(); });
       root.querySelector('#upimg').onclick = async () => {

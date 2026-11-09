@@ -1,11 +1,12 @@
 /* Lume · 我的光 — Service Worker：離線快取 */
-const CACHE = 'lume-v2-20';
+const CACHE = 'lume-v2-21';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './assets/css/style.css',
   './assets/css/theme.css',
+  './assets/js/core/theme-boot.js',
   './assets/js/core/utils.js',
   './assets/js/core/store.js',
   './assets/js/core/idb.js',

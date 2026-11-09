@@ -11,8 +11,8 @@
     const main = document.getElementById('main');
     if (main && !main.innerHTML.trim()) {
       main.innerHTML = '<div class="card"><h3>頁面載入時出了點小狀況 ♡</h3>' +
-        '<div class="muted">' + String(e.message || '') + '</div>' +
-        '<button class="btn block mt14" onclick="location.reload()">重新載入</button></div>';
+        '<div class="muted">' + L.U.esc(String(e.message || '')) + '</div>' +
+        '<button class="btn block mt14" data-act="reload">重新載入</button></div>';
     }
   });
 
@@ -350,9 +350,9 @@
       ).join('');
       if (type !== 'off') {
         html += '<div class="field"><label>' + U.esc(KEY_FIELD.label) + '</label>' +
-          '<input class="inp" id="skey" value="' + U.esc(cfg.key || 'Lume') + '" placeholder="' + U.esc(KEY_FIELD.ph) + '">' +
-          '<div class="muted mt8" style="font-size:11.5px">所有裝置都填同一個金鑰，就會共用同一份雲端資料 ♡' +
-          '（換一個金鑰 = 另一份獨立的資料）</div></div>';
+          '<input class="inp" id="skey" autocomplete="off" autocapitalize="off" spellcheck="false" value="' + U.esc(cfg.key || '') + '" placeholder="按下方按鈕產生，或填 12 字以上">' +
+          '<button class="btn ghost block mt8" id="sgen" type="button">🎲 產生安全金鑰</button>' +
+          '<div class="muted mt8" style="font-size:11.5px">同步金鑰就像密碼：所有裝置都填同一組，就會共用同一份雲端資料。請自己記好，不要傳給別人 ♡</div></div>';
       }
       html += '<div id="sguide">' + (S.setupGuide ? S.setupGuide(type) : '') + '</div>';
       return html;
@@ -371,12 +371,29 @@
       (body, close) => {
         L.bindCancel(body, close);
         const sel = body.querySelector('#stype');
-        sel.onchange = () => { body.querySelector('#sfields').innerHTML = fieldHTML(sel.value); };
+        /* 產生一組好打又猜不到的金鑰（xxxx-xxxx-xxxx-xxxx，約 79 位元的隨機性） */
+        const genKey = () => {
+          const A = 'abcdefghjkmnpqrstuvwxyz23456789', r = new Uint32Array(16);
+          crypto.getRandomValues(r);
+          let s = '';
+          for (let i = 0; i < 16; i++) { s += A[r[i] % A.length]; if (i % 4 === 3 && i < 15) s += '-'; }
+          return s;
+        };
+        const bindGen = () => {
+          const g = body.querySelector('#sgen');
+          if (g) g.onclick = () => {
+            const kb = body.querySelector('#skey');
+            if (kb.value.trim() && !confirm('要換成新的金鑰嗎？換了之後，其它裝置也要改成同一組。')) return;
+            kb.value = genKey(); L.toast('已產生，記得抄下來填到每台裝置 ♡');
+          };
+        };
+        bindGen();
+        sel.onchange = () => { body.querySelector('#sfields').innerHTML = fieldHTML(sel.value); bindGen(); };
         const collect = () => {
           const o = { type: sel.value, auto: body.querySelector('#sauto').checked, images: body.querySelector('#simg').checked };
           body.querySelectorAll('[data-f]').forEach(i => { o[i.dataset.f] = i.value.trim(); });
           const kb = body.querySelector('#skey');
-          if (kb) o.key = (kb.value.trim() || 'Lume');
+          if (kb) o.key = kb.value.trim();
           // 保留其它類型填過的值，避免切來切去要重打
           Object.keys(S.cfg || {}).forEach(k => { if (o[k] === undefined) o[k] = S.cfg[k]; });
           return o;
@@ -391,6 +408,10 @@
         };
         body.querySelector('#ok').onclick = async () => {
           const o = collect();
+          if ((o.type === 'firebase' || o.type === 'supabase') && String(o.key || '').length < 12) {
+            L.toast('同步金鑰太短了，別人很容易猜到 ♡ 請按「產生安全金鑰」');
+            return;
+          }
           S.setCfg(o);
           close();
           if (o.type === 'off') { L.toast('已關閉雲端同步 ♡'); S.stop(); S.start(); if (done) done(); return; }
@@ -600,8 +621,8 @@
       main.querySelectorAll('[data-plantab]').forEach(b => b.onclick = () => go(b.dataset.plantab));
     } catch (e) {
       main.innerHTML = '<div class="card"><h3>這個頁面出了點小狀況 ♡</h3>' +
-        '<div class="muted">' + String(e && e.message || e) + '</div>' +
-        '<button class="btn block mt14" onclick="location.href=\'#home\'">回到首頁</button></div>';
+        '<div class="muted">' + U.esc(String(e && e.message || e)) + '</div>' +
+        '<button class="btn block mt14" data-act="home">回到首頁</button></div>';
       console.error(e);
       return;
     }
@@ -658,12 +679,20 @@
       L.Sync.onUpdate = () => { try { paintNav(); render(); } catch (e) { } };
       try { L.Sync.start(); } catch (e) { console.error(e); }
       /* 支援「同步連結」：#sync=LMZ... 開頁就自動合併（拿來搬資料到主畫面 App 很好用） */
+      /* 安全：別人傳來的連結也可能長這樣，所以一定先問過你；而且用連結匯入時不接受「刪除紀錄」 */
       const m = /sync=([A-Za-z0-9\-_]+)/.exec(location.hash || '');
       if (m) {
-        L.Sync.importCode(m[1]).then(() => {
-          L.toast('同步碼已合併 ♡');
-          location.hash = '#home'; cur = 'home'; render({ force: true, top: true });
-        }).catch(() => L.toast('同步碼讀不出來 ♡'));
+        const code = m[1];
+        history.replaceState(null, '', location.pathname + location.search + '#home');
+        cur = 'home'; render({ force: true, top: true });
+        setTimeout(async () => {
+          const ok = await L.confirm('要合併這個同步連結嗎？',
+            '這個連結裡有一份資料，會合併到你現在的紀錄裡。只有連結是你自己產生的才按「確定」，別人傳給你的連結請按取消 ♡');
+          if (!ok) { L.toast('已取消，資料沒有變動 ♡'); return; }
+          L.Sync.importCode(code, { noDelete: true }).then(() => {
+            L.toast('同步碼已合併 ♡'); render({ force: true, top: true });
+          }).catch(() => L.toast('同步碼讀不出來 ♡'));
+        }, 300);
       }
     }
 
@@ -678,7 +707,7 @@
 
     // Service Worker（版本號更新的版本會自動清掉舊快取）
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('sw.js?v=20').catch(() => { });
+      navigator.serviceWorker.register('sw.js?v=21').catch(() => { });
     }
   }
 
@@ -689,10 +718,23 @@
       if (main && !main.innerHTML.trim()) {
         main.innerHTML = '<div class="card"><h3>內容沒有載入 ♡</h3>' +
           '<div class="muted">可能是舊的快取造成的，點下方按鈕重新載入一次就會好了。</div>' +
-          '<button class="btn block mt14" onclick="location.reload()">重新載入</button>' +
-          '<button class="btn ghost block mt8" onclick="if(window.caches){caches.keys().then(k=>k.forEach(x=>caches.delete(x))).then(()=>location.reload())}">清除快取並重載</button></div>';
+          '<button class="btn block mt14" data-act="reload">重新載入</button>' +
+          '<button class="btn ghost block mt8" data-act="clearcache">清除快取並重載</button></div>';
       }
     }, 3000);
+  });
+
+  /* 錯誤畫面的按鈕（不用 onclick="…"，讓瀏覽器的安全設定可以擋掉所有行內程式） */
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[data-act]');
+    if (!b) return;
+    const a = b.getAttribute('data-act');
+    if (a === 'reload') location.reload();
+    else if (a === 'home') location.hash = '#home';
+    else if (a === 'clearcache') {
+      if (window.caches) caches.keys().then(k => Promise.all(k.map(x => caches.delete(x)))).then(() => location.reload());
+      else location.reload();
+    }
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

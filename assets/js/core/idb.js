@@ -290,11 +290,14 @@ window.Lume = window.Lume || {};
   /** 產生 <img>：idb 鍵會先放佔位圖，再由 hydrateImages 非同步補上 */
   L.imgTag = function (val, cls, style) {
     if (!val) return '';
-    const c = cls ? ' class="' + cls + '"' : '';
-    const s = style ? ' style="' + style + '"' : '';
+    const e = L.U.esc;
+    const c = cls ? ' class="' + e(cls) + '"' : '';
+    const s = style ? ' style="' + e(style) + '"' : '';
     const v = String(val);
-    if (isKey(v)) return '<img' + c + s + ' data-img="' + v + '" src="' + PLACEHOLDER + '" alt="">';
-    return '<img' + c + s + ' src="' + v + '" alt="">';
+    if (isKey(v)) return /^idb:[\w-]+$/.test(v) ? '<img' + c + s + ' data-img="' + e(v) + '" src="' + PLACEHOLDER + '" alt="">' : '';
+    // 只接受真正的圖片網址（圖片 dataURL / blob / https），其它一律不顯示
+    if (!/^(data:image\/[\w.+-]+;base64,|blob:|https:\/\/)/i.test(v)) return '';
+    return '<img' + c + s + ' src="' + e(v) + '" alt="">';
   };
 
   /** 把畫面內所有佔位圖換成真正的圖片 */

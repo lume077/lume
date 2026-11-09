@@ -77,9 +77,12 @@ window.Lume = window.Lume || {};
   function firebaseAdapter(c) {
     const key = (c.key || 'Lume').trim();
     const base = String(c.url || '').trim().replace(/\/+$/, '');
-    const enc = encodeURIComponent(key).replace(/%2F/g, '_');
+    const encK = k => encodeURIComponent(k).replace(/%2F/g, '_');
+    const enc = encK(key);
+    // 舊網站可能用的是另一個（較短的）金鑰；搬家時讀那一個
+    const oldEnc = encK((c.oldKey || '').trim() || key);
     const path = () => base + '/' + APP + '/' + enc + '.json';
-    const oldPath = () => base + '/' + OLD_APP + '/' + enc + '.json';
+    const oldPath = () => base + '/' + OLD_APP + '/' + oldEnc + '.json';
     return {
       /** 讀舊網站（lume-world）的資料，搬家用 */
       async pullOld() {
@@ -94,7 +97,7 @@ window.Lume = window.Lume || {};
         if (!base) throw new Error('還沒填 Firebase Database URL');
         const r = await fetch(path(), { cache: 'no-store' });
         if (r.status === 401 || r.status === 403)
-          throw new Error('資料庫規則還沒開放讀寫 → Firebase Console → Realtime Database → 規則，貼上：{".read":true,".write":true}');
+          throw new Error('沒有權限讀取：請確認同步金鑰至少 12 個字，並照設定教學更新 Firebase 規則');
         if (!r.ok) throw new Error('讀取失敗（' + r.status + '）· 請確認 Database URL 是否正確');
         const t = await r.text();
         if (!t || t === 'null') return null;
@@ -107,7 +110,7 @@ window.Lume = window.Lume || {};
           body: JSON.stringify(obj)
         });
         if (r.status === 401 || r.status === 403)
-          throw new Error('資料庫規則還沒開放寫入 → Firebase Console → Realtime Database → 規則，貼上：{".read":true,".write":true}');
+          throw new Error('沒有權限寫入：請確認同步金鑰至少 12 個字，並照設定教學更新 Firebase 規則');
         if (!r.ok) throw new Error('寫入失敗（' + r.status + '）');
         return true;
       }
@@ -324,10 +327,12 @@ window.Lume = window.Lume || {};
   }
 
   /** 把遠端 payload 合進本地；回傳是否有實際變動 */
-  async function applyRemote(remote) {
-    if (!remote || (remote.app !== APP && remote.app !== OLD_APP) || !remote.data) return false;
+  async function applyRemote(remote, opts) {
+    if (!remote || typeof remote !== 'object' || (remote.app !== APP && remote.app !== OLD_APP) || !remote.data || typeof remote.data !== 'object') return false;
     const local = L.Store.db;
-    const r = remote.data, rDel = remote.del || {};
+    // 外來資料一律先消毒；noDelete = 不接受對方帶來的「刪除紀錄」（用連結匯入時）
+    const r = L.U.sanitize(remote.data);
+    const rDel = (opts && opts.noDelete) ? {} : L.U.sanitize(remote.del || {});
     const lDel = L.Store.tombstones() || {};
     const aAt = (local.meta && local.meta.docAt) || {};
     const bAt = (r.meta && r.meta.docAt) || {};
@@ -518,7 +523,7 @@ window.Lume = window.Lume || {};
     return 'LMR' + B64U(s);
   }
 
-  async function importCode(code) {
+  async function importCode(code, opts) {
     code = String(code || '').trim().replace(/\s+/g, '');
     if (!code) throw new Error('同步碼是空的');
     let s;
@@ -531,7 +536,7 @@ window.Lume = window.Lume || {};
       s = fromB64U(code.slice(3));
     } else { throw new Error('同步碼格式不對 ♡'); }
     const obj = JSON.parse(s);
-    const changed = await applyRemote(obj);
+    const changed = await applyRemote(obj, opts);
     await L.Store.flush();
     broadcast();
     setState(state === 'off' ? 'idle' : state);
@@ -544,18 +549,19 @@ window.Lume = window.Lume || {};
       off: { name: '不啟用（只存在這台裝置）', fields: [], note: '資料只留在這個瀏覽器／主畫面 App 裡。' },
       firebase: {
         name: '① Firebase Realtime Database（免費 · 最推薦）',
-        note: 'Google 帳號即可免費使用（Spark 方案：1GB 空間）。只要設定一次，所有裝置輸入同一個「同步金鑰」就會連到同一份資料。',
+        note: 'Google 帳號即可免費使用（Spark 方案：1GB 空間）。只要設定一次，所有裝置輸入同一個「同步金鑰」就會連到同一份資料。同步金鑰就像密碼，請用「產生安全金鑰」並且不要給別人看。',
         fields: [
           { k: 'url', label: 'Database URL', ph: 'https://你的專案-default-rtdb.firebaseio.com' },
+          { k: 'oldKey', label: '舊網站的同步金鑰（搬家用，沒有舊網站可留空）', ph: '例如 Lume' },
           { k: 'key', label: '同步金鑰 / 帳號名稱', ph: 'Lume' }
         ],
         guide: [
           '1. 到 console.firebase.google.com，用 Google 帳號建立一個免費專案（選 Spark 免費方案）。',
           '2. 左側「建構 → Realtime Database」→「建立資料庫」，地區選 asia-southeast1 或離你最近的。',
-          '3. 進到「規則」分頁，把內容整段換成下面這兩行後按「發布」：',
-          '{ "rules": { ".read": true, ".write": true } }',
+          '3. 進到「規則」分頁，把內容整段換成下面這段後按「發布」（別人無法列出整個資料庫，也一定要有 12 字以上的金鑰才能讀寫）：',
+          '{\n  "rules": {\n    "lume-v2": {\n      "$key": {\n        ".read": "$key.length >= 12",\n        ".write": "$key.length >= 12"\n      }\n    }\n  }\n}',
           '4. 回到「資料」分頁，最上方顯示的網址就是 Database URL（例如 https://xxx-default-rtdb.firebaseio.com）。',
-          '5. 把 URL 貼到上面，同步金鑰填一個只有你知道的名字（例如 Lume），每台裝置都填一樣的即可 ♡'
+          '5. 把 URL 貼到上面，按「產生安全金鑰」，再把同一組金鑰填到你每一台裝置 ♡'
         ]
       },
       supabase: {

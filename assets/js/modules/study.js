@@ -149,8 +149,10 @@ window.Lume = window.Lume || {}; window.Lume.modules = window.Lume.modules || {}
         ' 的第 ' + r.dayNo + ' / ' + r.dayTotal + ' 天</div>' : '') +
       '<div class="muted" style="font-size:12px;margin-top:4px">' + U.esc(dayLabel(r.date)) +
       (r.minutes ? ' · 學了 ' + U.num(r.minutes, 0) + ' 分鐘' : '') + '</div>' +
-      (r.link ? '<div class="muted" style="font-size:12px;margin-top:4px;word-break:break-all">🔗 <a href="' + U.esc(r.link) +
-        '" target="_blank" rel="noopener">' + U.esc(r.link) + '</a></div>' : '') +
+      (r.link ? '<div class="muted" style="font-size:12px;margin-top:4px;word-break:break-all">🔗 ' +
+        (/^https?:\/\//i.test(String(r.link).trim())     // 只有 http(s) 網址才做成可以點的連結
+          ? '<a href="' + U.esc(String(r.link).trim()) + '" target="_blank" rel="noopener noreferrer">' + U.esc(r.link) + '</a>'
+          : U.esc(r.link)) + '</div>' : '') +
       (r.note ? '<div class="study-box"><div class="lb">📝 學習心得</div><p>' + L.nl2br(r.note) + '</p></div>' : '') +
       (r.question ? '<div class="study-box q' + (r.solved ? ' solved' : '') + '"><div class="lb">' + (r.solved ? '✅ 已解決的問題' : '❓ 遇到的問題') +
         '</div><p>' + L.nl2br(r.question) + '</p>' +
@@ -216,7 +218,7 @@ window.Lume = window.Lume || {}; window.Lume.modules = window.Lume.modules || {}
         '<button class="tab" id="snewtopic">＋ 主題</button></div>' +
         '<div class="muted mt8" style="line-height:1.7">沒寫日期就排今天；寫「明天」「12」「11/12」就排到那天；' +
         '寫「11/1-11/12 剪片練習」或「1到12 剪片」就會排成連續好幾天 ♡ ' +
-        '<a href="javascript:void 0" id="sform" style="color:var(--lav-600)">詳細安排</a></div></div>' +
+        '<a href="#" role="button" id="sform" style="color:var(--lav-600)">詳細安排</a></div></div>' +
 
         (function () {
           const t = D.today();
@@ -296,7 +298,7 @@ window.Lume = window.Lume || {}; window.Lume.modules = window.Lume.modules || {}
       };
       root.querySelector('#sq-add').onclick = add;
       root.querySelector('#sq').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) add(); };
-      root.querySelector('#sform').onclick = () => self.form(ctx, { topic: draftTopic, date: D.today() });
+      root.querySelector('#sform').onclick = (e) => { e.preventDefault(); self.form(ctx, { topic: draftTopic, date: D.today() }); };
 
       const mv = root.querySelector('#smove');
       if (mv) mv.onclick = () => {

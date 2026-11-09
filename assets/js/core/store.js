@@ -50,7 +50,8 @@ window.Lume = window.Lume || {};
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      db = raw ? JSON.parse(raw) : defaults();
+      db = raw ? L.U.sanitize(JSON.parse(raw)) : defaults();
+      if (!db || typeof db !== 'object' || Array.isArray(db)) db = defaults();
     } catch (e) { db = defaults(); }
     // schema 補全 / migrate
     const d = defaults();
@@ -217,8 +218,9 @@ window.Lume = window.Lume || {};
     },
     /** 匯入：會把備份檔裡的圖片重新寫進 IndexedDB，只留 idb 鍵在 localStorage */
     async importJSON(text, merge) {
-      const inc = JSON.parse(text);
-      if (!inc || typeof inc !== 'object') throw new Error('格式錯誤');
+      let inc = JSON.parse(text);
+      if (!inc || typeof inc !== 'object' || Array.isArray(inc)) throw new Error('格式錯誤');
+      inc = L.U.sanitize(inc);   // 備份檔也可能被動過手腳，先消毒
       if (merge) {
         const d = defaults();
         for (const k in d) {
@@ -276,7 +278,7 @@ window.Lume = window.Lume || {};
     /** 整包替換資料（雲端同步合併後寫回），並立即落檔 */
     async adopt(next, reason) {
       if (!next || typeof next !== 'object') return false;
-      db = Object.assign(defaults(), next);
+      db = Object.assign(defaults(), L.U.sanitize(next));
       for (const k in defaults()) if (db[k] === undefined) db[k] = defaults()[k];
       if (!db._del) db._del = {};
       if (!db.meta) db.meta = {};

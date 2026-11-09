@@ -260,6 +260,42 @@ window.Lume = window.Lume || {};
     }
   };
 
+  /* ---------------- 外來資料消毒 ----------------
+     雲端、同步碼、備份檔進來的資料可能被別人動過手腳，
+     存進本機前先清一遍：移除危險的鍵、id / 日期 / 數字只留安全字元、圖片只收真正的圖片。 */
+  const BAD_KEYS = { __proto__: 1, constructor: 1, prototype: 1 };
+  const DATE_KEYS = { date: 1, start: 1, end: 1, planStart: 1, planEnd: 1, week: 1, time: 1, createdAt: 1, updatedAt: 1, at: 1 };
+  const NUM_KEYS = { cycleLen: 1, periodLen: 1, target: 1, totalPages: 1, currentPage: 1, dayNo: 1, dayTotal: 1 };
+  const IMG_DATA = /^data:image\/(png|jpe?g|gif|webp|avif|bmp);base64,[A-Za-z0-9+/=\s]+$/;
+  function cleanStr(k, v) {
+    if (v.indexOf('data:') === 0) return IMG_DATA.test(v) ? v : '';
+    if (v.indexOf('idb:') === 0) return /^idb:[\w-]{1,60}$/.test(v) ? v : '';
+    if (k === 'id' || /Id$/.test(k)) return v.replace(/[^\w\-:.@]/g, '').slice(0, 120) || ('x' + U.uid());
+    if (DATE_KEYS[k]) return v.replace(/[^\w\-:.+/ ]/g, '').slice(0, 40);
+    if (k === 'pri') return v.replace(/[^\w-]/g, '').slice(0, 20);
+    return v;
+  }
+  function sanitize(v, k, depth) {
+    depth = depth || 0;
+    if (depth > 40) return null;
+    if (typeof v === 'string') return cleanStr(k || '', v);
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (v === null || typeof v === 'boolean') return v;
+    if (Array.isArray(v)) return v.map(x => sanitize(x, k, depth + 1));
+    if (typeof v === 'object') {
+      const o = {};
+      for (const key of Object.keys(v)) {
+        if (BAD_KEYS[key]) continue;
+        let x = v[key];
+        if (NUM_KEYS[key] && x !== '' && x != null) { x = Number(x); if (!isFinite(x)) x = 0; }
+        o[key] = sanitize(x, key, depth + 1);
+      }
+      return o;
+    }
+    return null;   // function / undefined 等不該出現在資料裡的東西
+  }
+  U.sanitize = v => sanitize(v, '', 0);
+
   L.D = D; L.Lunar = Lunar; L.icon = icon; L.U = U; L.solarTerm = solarTerm;
   L.ICONS = P;   // 讓 extras.js 可以補新圖示
 })(window.Lume);
